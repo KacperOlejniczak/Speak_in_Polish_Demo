@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mów po polsku — gra dyktando | WSB Merito Wrocław</title>
+
+<!-- Fonts: ładowane online dla pełnej osobowości; offline mamy solidny zapasowy stack systemowy. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   TOKENY (kolory, typografia)
+   Marka: atrament + fiolet. Zieleń/czerwień zarezerwowane WYŁĄCZNIE
+   na semantykę informacji zwrotnej (trafione / pominięte).
+   ============================================================ */
+:root{
+  --paper:#FAF7F2;        /* ciepła biel */
+  --card:#FFFFFF;
+  --ink:#211E36;          /* głęboki atrament */
+  --muted:#6A6780;        /* tekst drugorzędny */
+  --line:#E9E4DA;         /* delikatne linie */
+  --brand:#5648CA;        /* fiolet marki */
+  --brand-soft:#EDEAFB;
+  --amber:#F0A24B;        /* ciepły akcent */
+  --amber-soft:#FBEFDD;
+  --good:#1E9E6B;         /* trafione */
+  --good-soft:#E1F4EC;
+  --miss:#D8503A;         /* pominięte */
+  --miss-soft:#FBE6E1;
+  --shadow:0 18px 40px -24px rgba(33,30,54,.35);
+  --radius:18px;
+  --display:"Bricolage Grotesque",ui-rounded,"Segoe UI",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 100% -10%, #F2EEFF 0%, transparent 55%),
+    radial-gradient(900px 500px at -10% 110%, #FFF1DF 0%, transparent 50%),
+    var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:8px}
+
+.wrap{max-width:860px;margin:0 auto;padding:22px 18px 64px}
+
+/* ---------- Nagłówek ---------- */
+.top{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin-bottom:18px;
+}
+.brandblock{display:flex;flex-direction:column;gap:2px}
+.eyebrow{
+  font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--brand);font-weight:700;
+}
+h1{
+  font-family:var(--display);font-weight:800;
+  font-size:clamp(1.7rem,5vw,2.5rem);line-height:1.02;margin:.1em 0 0;
+  letter-spacing:-.02em;
+}
+h1 .accent{color:var(--brand)}
+.sub{color:var(--muted);font-size:.95rem;margin-top:4px;max-width:46ch}
+.btn-help{
+  border:1.5px solid var(--line);background:var(--card);color:var(--ink);
+  padding:10px 16px;border-radius:999px;font-weight:600;font-size:.9rem;
+  cursor:pointer;white-space:nowrap;transition:border-color .15s,transform .05s;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.btn-help:hover{border-color:var(--brand)}
+.btn-help:active{transform:translateY(1px)}
+
+/* ---------- Pasek sterowania ---------- */
+.controls{
+  display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;
+  margin-bottom:18px;
+}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl > label{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.levels{display:flex;gap:6px;background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:4px}
+.levels button{
+  border:0;background:transparent;color:var(--muted);font-weight:600;font-size:.86rem;
+  padding:8px 13px;border-radius:999px;cursor:pointer;transition:background .15s,color .15s;
+  white-space:nowrap;
+}
+.levels button[aria-pressed="true"]{background:var(--brand);color:#fff}
+.levels button.tongue[aria-pressed="true"]{background:var(--amber);color:#3a2a12}
+select{
+  appearance:none;-webkit-appearance:none;
+  background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236A6780' stroke-width='1.8' stroke-linecap='round'/></svg>") no-repeat right 14px center;
+  border:1.5px solid var(--line);color:var(--ink);font-weight:600;font-size:.9rem;
+  padding:10px 38px 10px 14px;border-radius:12px;cursor:pointer;min-width:190px;
+}
+
+/* ---------- Karta ćwiczenia ---------- */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:26px 26px 22px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:5px;
+  background:linear-gradient(90deg,var(--brand),var(--amber));
+}
+.card.tongue-mode::before{background:linear-gradient(90deg,var(--amber),#E0653C)}
+
+.meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.tag{
+  font-size:.74rem;font-weight:700;letter-spacing:.04em;
+  padding:4px 11px;border-radius:999px;background:var(--brand-soft);color:var(--brand);
+}
+.tag.lvl{background:var(--amber-soft);color:#9a5a16}
+.counter{margin-left:auto;font-size:.82rem;color:var(--muted);font-weight:600}
+
+/* Zdanie docelowe — element-sygnatura */
+.target{
+  font-family:var(--display);font-weight:600;letter-spacing:-.01em;
+  font-size:clamp(1.45rem,4.6vw,2.15rem);line-height:1.28;
+  margin:6px 0 4px;
+}
+.target .w{
+  display:inline-block;padding:1px 2px;border-radius:7px;
+  transition:background .25s,color .25s,box-shadow .25s;
+}
+.target .w.good{background:var(--good-soft);color:#14764f;box-shadow:inset 0 -2px 0 rgba(30,158,107,.4)}
+.target .w.miss{background:var(--miss-soft);color:#a83520;box-shadow:inset 0 -2px 0 rgba(216,80,58,.45)}
+
+.aids{display:flex;flex-direction:column;gap:8px;margin:14px 0 4px}
+.aid{display:flex;gap:10px;align-items:baseline;font-size:.96rem}
+.aid .k{
+  flex:0 0 auto;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;width:74px;padding-top:3px;
+}
+.aid .v{color:var(--ink)}
+.aid.pron .v{color:var(--brand);font-weight:600}
+.aid .v.hidden-aid{filter:blur(6px);user-select:none;cursor:pointer;opacity:.7}
+.toggle-aids{display:flex;gap:14px;margin-top:6px}
+.toggle-aids button{
+  background:none;border:0;color:var(--muted);font-size:.82rem;font-weight:600;
+  cursor:pointer;padding:2px 0;border-bottom:1.5px dashed var(--line);
+}
+.toggle-aids button:hover{color:var(--brand);border-color:var(--brand)}
+.listen-row{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn-listen{
+  border:1.5px solid var(--brand);background:var(--brand-soft);color:var(--brand);
+  font-weight:700;font-size:.86rem;padding:8px 14px;border-radius:999px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;transition:filter .15s,transform .05s;
+}
+.btn-listen:hover{filter:brightness(1.03)}
+.btn-listen:active{transform:translateY(1px)}
+.btn-listen.slow{background:var(--amber-soft);border-color:var(--amber);color:#8a5012}
+.listen-note{font-size:.8rem;color:var(--muted)}
+
+/* ---------- Pole odpowiedzi ---------- */
+.answer{margin-top:18px}
+.answer-label{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:7px}
+.input-row{position:relative}
+textarea{
+  width:100%;min-height:74px;resize:vertical;
+  border:1.5px solid var(--line);border-radius:14px;
+  padding:14px 56px 14px 14px;font-family:var(--body);font-size:1.1rem;color:var(--ink);
+  background:#FCFBF9;line-height:1.4;
+}
+textarea:focus{outline:none;border-color:var(--brand);background:#fff}
+.mic{
+  position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:12px;
+  border:1.5px solid var(--line);background:#fff;cursor:pointer;font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.mic:hover{border-color:var(--brand)}
+.mic.live{background:var(--miss);border-color:var(--miss);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(216,80,58,.45)}50%{box-shadow:0 0 0 8px rgba(216,80,58,0)}}
+.mic-note{font-size:.78rem;color:var(--muted);margin-top:7px;min-height:1.1em}
+.mic-note.warn{color:var(--miss)}
+
+.actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn{
+  border:0;border-radius:12px;padding:13px 22px;font-weight:700;font-size:.96rem;cursor:pointer;
+  transition:transform .05s,filter .15s;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--brand);color:var(--brand)}
+.btn-next{background:var(--ink);color:#fff;margin-left:auto}
+.btn-next:hover{filter:brightness(1.15)}
+
+/* ---------- Informacja zwrotna ---------- */
+.feedback{
+  margin-top:16px;border-radius:14px;padding:14px 16px;display:none;
+  align-items:center;gap:16px;border:1px solid var(--line);background:#FCFBF9;
+}
+.feedback.show{display:flex}
+.meter{
+  flex:0 0 auto;width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
+  font-weight:800;font-size:1.05rem;font-family:var(--display);
+  background:conic-gradient(var(--good) calc(var(--p)*1%), var(--line) 0);
+  color:var(--ink);
+}
+.meter span{width:46px;height:46px;border-radius:50%;background:#FCFBF9;display:grid;place-items:center}
+.fb-text{display:flex;flex-direction:column;gap:2px}
+.fb-title{font-weight:700;font-family:var(--display)}
+.fb-sub{font-size:.86rem;color:var(--muted)}
+
+/* ---------- Stopka / wynik ---------- */
+.scoreboard{
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:.88rem;color:var(--muted);
+}
+.scoreboard b{color:var(--ink);font-family:var(--display)}
+.lenient{margin-left:auto;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.switch{width:42px;height:24px;border-radius:999px;background:var(--line);position:relative;transition:background .15s;flex:0 0 auto}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.lenient input{position:absolute;opacity:0;width:0;height:0}
+.lenient input:checked + .switch{background:var(--brand)}
+.lenient input:checked + .switch::after{left:21px}
+
+/* ---------- Modal instrukcji ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(33,30,54,.5);backdrop-filter:blur(3px);
+  display:none;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:50;overflow:auto;
+}
+.overlay.show{display:flex}
+.modal{
+  background:var(--card);border-radius:20px;max-width:620px;width:100%;
+  box-shadow:0 30px 70px -20px rgba(33,30,54,.55);overflow:hidden;margin:auto 0;
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 0}
+.modal-head h2{font-family:var(--display);font-weight:800;font-size:1.3rem;margin:0}
+.x{border:0;background:var(--line);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1.1rem;color:var(--ink)}
+.tabs{display:flex;gap:6px;padding:14px 22px 0}
+.tabs button{
+  border:0;background:transparent;padding:10px 16px;border-radius:10px 10px 0 0;
+  font-weight:700;cursor:pointer;color:var(--muted);font-size:.92rem;
+}
+.tabs button[aria-selected="true"]{background:var(--brand-soft);color:var(--brand)}
+.panel{padding:18px 22px 24px;display:none}
+.panel.show{display:block}
+.howto{margin:0 0 16px}
+.howto h3{font-family:var(--display);font-size:1rem;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.howto p{margin:0 0 3px;font-size:.93rem}
+.howto .en{color:var(--muted);font-size:.86rem;font-style:italic}
+.howto kbd{
+  font-family:var(--body);font-weight:700;font-size:.8rem;background:var(--ink);color:#fff;
+  padding:2px 7px;border-radius:6px;
+}
+.tip{background:var(--amber-soft);border-radius:12px;padding:12px 14px;font-size:.88rem;color:#7a4a12}
+.tip b{color:#5e3909}
+
+/* ---------- Pole tylko głosowe (klawiatura wyłączona) ---------- */
+textarea.voice-only{cursor:pointer;caret-color:transparent;background:#FCFBF9}
+textarea.voice-only::placeholder{color:#9b97ad}
+
+/* ---------- Tooltip „Trybu pobłażliwego” ---------- */
+.lenient{position:relative}
+.info{
+  display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;
+  background:var(--muted);color:#fff;font-size:.68rem;font-weight:800;font-style:normal;
+  font-family:var(--display);line-height:1;flex:0 0 auto;
+}
+.tip-bubble{
+  position:absolute;bottom:calc(100% + 10px);right:0;width:min(290px,82vw);
+  background:var(--ink);color:#fff;font-size:.78rem;font-weight:500;line-height:1.42;
+  padding:11px 13px;border-radius:11px;text-align:left;
+  opacity:0;visibility:hidden;transform:translateY(4px);
+  transition:opacity .15s,transform .15s;z-index:30;pointer-events:none;
+  box-shadow:0 14px 34px -12px rgba(0,0,0,.55);
+}
+.lenient:hover .tip-bubble,.lenient:focus-within .tip-bubble{opacity:1;visibility:visible;transform:translateY(0)}
+.tip-bubble::after{content:"";position:absolute;top:100%;right:16px;border:6px solid transparent;border-top-color:var(--ink)}
+
+/* ============================================================
+   RESPONSYWNOŚĆ — dwa układy
+   Telefon (domyślnie): stos, duże przyciski.
+   Komputer (≥720px): szerszy nagłówek w rzędzie, luźniejsze odstępy.
+   ============================================================ */
+@media (max-width:719px){
+  .wrap{padding:16px 13px 56px}
+  .controls{gap:10px}
+  .ctl{flex:1 1 100%}
+  select{width:100%;min-width:0}
+  .levels{width:100%;justify-content:space-between;overflow-x:auto}
+  .card{padding:20px 17px 18px}
+  .actions{flex-direction:column}
+  .btn{width:100%;text-align:center}
+  .btn-next{margin-left:0}
+  .aid .k{width:64px}
+  .scoreboard{gap:12px}
+  .lenient{margin-left:0;flex:1 1 100%;justify-content:flex-start;margin-top:4px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brandblock">
+      <span class="eyebrow">Uniwersytet WSB Merito Wrocław · Welcome Center</span>
+      <h1>Mów <span class="accent">po polsku</span></h1>
+      <p class="sub">Przeczytaj zdanie, włącz dyktowanie głosem i powiedz je na głos. Gra sprawdzi, ile słów udało się trafić.</p>
+    </div>
+    <button class="btn-help" id="helpBtn" aria-haspopup="dialog">🎙️ Jak włączyć dyktowanie</button>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <label>Poziom</label>
+      <div class="levels" id="levels" role="group" aria-label="Wybór poziomu">
+        <button data-level="easy" aria-pressed="true">Łatwy</button>
+        <button data-level="medium" aria-pressed="false">Średni</button>
+        <button data-level="hard" aria-pressed="false">Trudny</button>
+        <button data-level="tongue" class="tongue" aria-pressed="false">😈 Łamańce</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="field">Temat / kierunek</label>
+      <select id="field"><option value="all">Wszystkie tematy</option></select>
+    </div>
+  </div>
+
+  <main class="card" id="card">
+    <div class="meta">
+      <span class="tag" id="tagField">—</span>
+      <span class="tag lvl" id="tagLevel">—</span>
+      <span class="counter" id="counter">—</span>
+    </div>
+
+    <p class="target" id="target" aria-live="polite"></p>
+
+    <div class="aids">
+      <div class="aid pron"><span class="k">Wymowa</span><span class="v" id="pron"></span></div>
+      <div class="aid"><span class="k">English</span><span class="v" id="trans"></span></div>
+    </div>
+    <div class="toggle-aids">
+      <button id="togglePron">Ukryj wymowę</button>
+      <button id="toggleTrans">Ukryj tłumaczenie</button>
+    </div>
+
+    <div class="listen-row">
+      <button class="btn-listen" id="listen">🔊 Posłuchaj</button>
+      <button class="btn-listen slow" id="listenSlow">🐢 Wolniej</button>
+      <span class="listen-note" id="listenNote"></span>
+    </div>
+
+    <div class="answer">
+      <div class="answer-label">Twoja odpowiedź — kliknij pole i mów 🎤</div>
+      <div class="input-row">
+        <textarea id="input" placeholder="Kliknij tutaj, włącz dyktowanie na urządzeniu i mów…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+        <button class="mic" id="mic" title="Dyktuj w przeglądarce (Chrome / Edge)" aria-label="Dyktuj w przeglądarce">🎤</button>
+      </div>
+      <div class="mic-note" id="micNote"></div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="check">Sprawdź</button>
+        <button class="btn btn-ghost" id="clear">Wyczyść</button>
+        <button class="btn btn-next" id="next">Następny →</button>
+      </div>
+
+      <div class="feedback" id="feedback" aria-live="polite">
+        <div class="meter" id="meter" style="--p:0"><span id="meterTxt">0%</span></div>
+        <div class="fb-text">
+          <div class="fb-title" id="fbTitle"></div>
+          <div class="fb-sub" id="fbSub"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scoreboard">
+      <span>Zaliczone: <b id="passed">0</b> / <b id="attempts">0</b></span>
+      <span>Seria: <b id="streak">0</b> 🔥</span>
+      <label class="lenient">
+        <input type="checkbox" id="lenient" checked>
+        <span class="switch" aria-hidden="true"></span>
+        Tryb pobłażliwy
+        <span class="info" aria-hidden="true">i</span>
+        <span class="tip-bubble" role="tooltip">Tryb pobłażliwy ocenia odpowiedź łagodniej: pomija polskie znaki diakrytyczne (ą, ę, ł, ó, ś, ź, ż, ć, ń), interpunkcję oraz wielkość liter. Włączony — ćwiczysz płynność mówienia. Wyłączony — liczy się dokładna pisownia.</span>
+      </label>
+    </div>
+  </main>
+</div>
+
+<!-- ===================== MODAL: INSTRUKCJA ===================== -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Jak włączyć dyktowanie głosem</h2>
+      <button class="x" id="closeModal" aria-label="Zamknij">✕</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="tabPc" role="tab" aria-selected="true">💻 Komputer</button>
+      <button id="tabPhone" role="tab" aria-selected="false">📱 Telefon</button>
+    </div>
+
+    <div class="panel show" id="panelPc" role="tabpanel">
+      <div class="howto">
+        <h3>🪟 Windows</h3>
+        <p>Kliknij pole tekstowe, naciśnij <kbd>Windows</kbd> + <kbd>H</kbd> i mów. Język ustawisz w <em>Ustawienia → Czas i język → Mowa</em>.</p>
+        <p class="en">Click the text field, press Windows + H and speak. Set the language in Settings → Time &amp; Language → Speech.</p>
+      </div>
+      <div class="howto">
+        <h3>🍎 macOS</h3>
+        <p>Włącz <em>Ustawienia → Klawiatura → Dyktowanie</em>, wybierz polski, a potem naciśnij dwukrotnie klawisz <kbd>🎤 / Fn</kbd>.</p>
+        <p class="en">Turn on Settings → Keyboard → Dictation, choose Polish, then double-press the 🎤 / Fn key.</p>
+      </div>
+      <div class="howto">
+        <h3>🌐 Najprościej: przycisk 🎤 w grze</h3>
+        <p>W przeglądarce Chrome lub Edge kliknij mikrofon obok pola — gra sama nasłuchuje po polsku.</p>
+        <p class="en">In Chrome or Edge, click the mic next to the field — the game listens in Polish for you.</p>
+      </div>
+      <div class="tip"><b>Wskazówka:</b> najpierw kliknij w pole tekstowe, dopiero potem włącz dyktowanie i mów wyraźnie, w tempie spokojnym. <span class="en">Click the field first, then start dictation.</span></div>
+    </div>
+
+    <div class="panel" id="panelPhone" role="tabpanel">
+      <div class="howto">
+        <h3>🤖 Android</h3>
+        <p>Dotknij pola tekstowego. Na klawiaturze dotknij ikony mikrofonu 🎤 i mów. Język zmienisz, przytrzymując spację lub w ustawieniach klawiatury (Gboard).</p>
+        <p class="en">Tap the field, then tap the 🎤 on the keyboard and speak. Change the language by holding the space bar.</p>
+      </div>
+      <div class="howto">
+        <h3>📱 iPhone</h3>
+        <p>Włącz <em>Ustawienia → Ogólne → Klawiatura → Dyktowanie</em>. Dotknij pola, a potem ikony 🎤 na klawiaturze i mów po polsku.</p>
+        <p class="en">Enable Settings → General → Keyboard → Dictation. Tap the field, then the 🎤 on the keyboard and speak Polish.</p>
+      </div>
+      <div class="tip"><b>Wskazówka:</b> jeśli klawiatura nie ma polskiego, dodaj go w ustawieniach języka klawiatury. <span class="en">If your keyboard has no Polish, add it in the keyboard language settings.</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   PULA TEKSTÓW — TUTAJ DODAJESZ NOWE ZDANIA, AYLA 🙂
+   Każdy obiekt:
+     level : "easy" | "medium" | "hard" | "tongue"
+     field : nazwa tematu/kierunku (dowolny napis — nowe pojawią się w filtrze same)
+     pl    : tekst po polsku (to dyktuje student)
+     pron  : wymowa — DUŻE LITERY oznaczają akcentowaną sylabę
+     en    : tłumaczenie na angielski
+   Wystarczy dopisać kolejny obiekt na końcu listy.
+   ============================================================================ */
+const TEXTS = [
+  /* --- ŁATWY --- */
+  {level:"easy", field:"Życie studenckie", pl:"Dzień dobry! Jak się masz?", pron:"jen DOH-bri! yak sheh mash?", en:"Good morning! How are you?"},
+  {level:"easy", field:"Życie studenckie", pl:"Studiuję na Uniwersytecie WSB Merito we Wrocławiu.", pron:"stoo-DYOO-yeh na oo-nee-ver-si-TE-tsye ve vrots-WA-vyoo", en:"I study at WSB Merito University in Wrocław."},
+  {level:"easy", field:"Zarządzanie", pl:"Lubię zarządzanie i marketing.", pron:"LOO-byeh za-ZHON-dza-nyeh ee MAR-ke-ting", en:"I like management and marketing."},
+  {level:"easy", field:"Życie studenckie", pl:"Gdzie jest biblioteka?", pron:"g-jeh yest bee-blyo-TE-ka?", en:"Where is the library?"},
+  {level:"easy", field:"Życie studenckie", pl:"Mam zajęcia o dziewiątej rano.", pron:"mam za-YEN-cha o jeh-VYON-tey RA-no", en:"I have classes at nine in the morning."},
+  {level:"easy", field:"Życie studenckie", pl:"Poproszę kawę z mlekiem.", pron:"po-PRO-sheh KA-veh z MLE-kyem", en:"A coffee with milk, please."},
+  {level:"easy", field:"Informatyka", pl:"Informatyka to mój ulubiony przedmiot.", pron:"een-for-MA-ti-ka to mooy oo-loo-BYO-ni PSHED-myot", en:"IT is my favourite subject."},
+
+  /* --- ŚREDNI --- */
+  {level:"medium", field:"Logistyka", pl:"Logistyka zajmuje się przepływem towarów i informacji.", pron:"lo-GEES-ti-ka zai-MOO-yeh sheh pshe-PWI-vem to-VA-roof ee een-for-MA-tsyee", en:"Logistics deals with the flow of goods and information."},
+  {level:"medium", field:"Finanse i Rachunkowość", pl:"Księgowy przygotowuje bilans i rachunek zysków i strat.", pron:"kshen-GO-vi pshi-go-to-VOO-yeh BEE-lans ee ra-HOO-nek ZIS-koof ee strat", en:"The accountant prepares the balance sheet and the profit and loss statement."},
+  {level:"medium", field:"Zarządzanie", pl:"Dobry menedżer potrafi motywować swój zespół.", pron:"DOB-ri me-NE-jer po-TRA-fee mo-ti-VO-vach svooy ZES-poow", en:"A good manager can motivate their team."},
+  {level:"medium", field:"Psychologia", pl:"Psychologia bada ludzkie zachowanie i emocje.", pron:"psi-ho-LO-gya BA-da LOOTS-kyeh za-ho-VA-nyeh ee e-MO-tsye", en:"Psychology studies human behaviour and emotions."},
+  {level:"medium", field:"Marketing", pl:"Marketing internetowy wykorzystuje media społecznościowe.", pron:"MAR-ke-ting een-ter-ne-TO-vi vi-ko-zhi-STOO-yeh ME-dya spo-wech-nosh-CHO-veh", en:"Internet marketing uses social media."},
+  {level:"medium", field:"Prawo w biznesie", pl:"Umowa musi być podpisana przez obie strony.", pron:"oo-MO-va MOO-shee bich pod-pee-SA-na pshez O-byeh STRO-ni", en:"The contract must be signed by both parties."},
+  {level:"medium", field:"Turystyka", pl:"Turystyka rozwija się dynamicznie po pandemii.", pron:"too-RIS-ti-ka roz-VEE-ya sheh di-na-MEECH-nyeh po pan-DE-myee", en:"Tourism is developing dynamically after the pandemic."},
+
+  /* --- TRUDNY --- */
+  {level:"hard", field:"Zarządzanie", pl:"Przedsiębiorstwo wdrożyło zintegrowany system zarządzania jakością.", pron:"pshed-shem-BYOR-stfo vdro-ZHI-wo zin-te-gro-VA-ni SIS-tem za-zhon-DZA-nya ya-KOSH-chom", en:"The company implemented an integrated quality management system."},
+  {level:"hard", field:"Informatyka", pl:"Sztuczna inteligencja przekształca współczesny rynek pracy.", pron:"SHTOOCH-na een-te-lee-GEN-tsya pshe-KSHTOW-tsa fspoow-CHES-ni RI-nek PRA-tsi", en:"Artificial intelligence is transforming the modern labour market."},
+  {level:"hard", field:"Prawo w biznesie", pl:"Wierzyciel ma prawo dochodzić swoich roszczeń przed sądem.", pron:"vye-ZHI-chel ma PRA-vo do-HO-jeech SVO-eeh ROSH-chen pshed SON-dem", en:"The creditor has the right to pursue their claims in court."},
+  {level:"hard", field:"Bezpieczeństwo", pl:"Bezpieczeństwo wewnętrzne wymaga współpracy wielu instytucji.", pron:"bez-pye-CHEN-stfo vev-NENTZH-ne vi-MA-ga fspoow-PRA-tsi VYE-loo een-sti-TOO-tsyee", en:"Internal security requires the cooperation of many institutions."},
+  {level:"hard", field:"Zarządzanie", pl:"Zrównoważony rozwój łączy cele ekonomiczne, społeczne i środowiskowe.", pron:"zroov-no-VA-zho-ni ROZ-vooy WON-chi TSE-le e-ko-no-MEECH-ne spo-WECH-ne ee shro-do-vees-KO-ve", en:"Sustainable development combines economic, social and environmental goals."},
+  {level:"hard", field:"Finanse i Rachunkowość", pl:"Dywersyfikacja portfela inwestycyjnego ogranicza ryzyko finansowe.", pron:"di-ver-si-fee-KA-tsya port-FE-la een-ves-ti-TSIY-ne-go o-gra-NEE-cha RI-zi-ko fee-nan-SO-ve", en:"Diversification of an investment portfolio reduces financial risk."},
+
+  /* --- ŁAMAŃCE JĘZYKOWE 😈 --- */
+  {level:"tongue", field:"Łamańce", pl:"W Szczebrzeszynie chrząszcz brzmi w trzcinie.", pron:"f shche-bzhe-SHI-nyeh hshonshch bzhmee f TZHCHEE-nyeh", en:"In Szczebrzeszyn, a beetle buzzes in the reeds."},
+  {level:"tongue", field:"Łamańce", pl:"Stół z powyłamywanymi nogami.", pron:"stoow s po-vi-wa-mi-VA-ni-mee no-GA-mee", en:"A table with broken-off legs."},
+  {level:"tongue", field:"Łamańce", pl:"Król Karol kupił królowej Karolinie korale koloru koralowego.", pron:"krool KA-rol KOO-peew kroo-LO-vey ka-ro-LEE-nyeh ko-RA-le ko-LO-roo ko-ra-lo-VE-go", en:"King Karol bought Queen Karolina coral-coloured beads."},
+  {level:"tongue", field:"Łamańce", pl:"Czterysta czterdzieści cztery.", pron:"chte-RIS-ta chter-JESH-chee CHTE-ri", en:"Four hundred and forty-four."},
+  {level:"tongue", field:"Łamańce", pl:"Pchła pchłę pchała, a ta pchła płakała.", pron:"phwa PHWEH PHWA-wa, a ta phwa pwa-KA-wa", en:"A flea pushed a flea, and that flea cried."},
+  {level:"tongue", field:"Łamańce", pl:"Jola lojalna, Jola nielojalna.", pron:"YO-la lo-YAL-na, YO-la nye-lo-YAL-na", en:"Loyal Jola, disloyal Jola."},
+  {level:"tongue", field:"Łamańce", pl:"Czy rak trzyma w szczypcach strzęp szczawiu, czy trzy części trzciny?", pron:"chi rak TZHI-ma f SHCHIP-tsah stzhemp SHCHA-vyoo, chi tzhi CHEN-shchee TZHCHEE-ni?", en:"Does the crayfish hold a shred of sorrel in its claws, or three parts of a reed?"},
+  {level:"tongue", field:"Łamańce", pl:"Soczewica, koło, miele, młyn.", pron:"so-che-VEE-tsa, KO-wo, MYE-le, mwin", en:"Lentil, wheel, grinds, mill."},
+
+  /* ====================== DODATKOWE TEKSTY ====================== */
+  /* --- ŁATWY: życie studenckie + kierunki --- */
+  {level:"easy", field:"Życie studenckie", pl:"Cześć, mam na imię Anna.", pron:"cheshch, mam na EE-myeh AN-na", en:"Hi, my name is Anna."},
+  {level:"easy", field:"Życie studenckie", pl:"Skąd jesteś?", pron:"skont YES-tesh?", en:"Where are you from?"},
+  {level:"easy", field:"Życie studenckie", pl:"Nie rozumiem, proszę powtórzyć.", pron:"nye ro-ZOO-myem, PRO-sheh pof-TOO-zhich", en:"I don't understand, please repeat."},
+  {level:"easy", field:"Życie studenckie", pl:"Gdzie jest dziekanat?", pron:"g-jeh yest jye-KA-nat?", en:"Where is the dean's office?"},
+  {level:"easy", field:"Życie studenckie", pl:"O której zaczyna się wykład?", pron:"o KTOO-rey za-CHI-na sheh VIK-wat?", en:"What time does the lecture start?"},
+  {level:"easy", field:"Życie studenckie", pl:"Czy mogę zapłacić kartą?", pron:"chi MO-geh za-PWA-cheech KAR-tom?", en:"Can I pay by card?"},
+  {level:"easy", field:"Życie studenckie", pl:"Dziękuję za pomoc.", pron:"jen-KOO-yeh za PO-mots", en:"Thank you for your help."},
+  {level:"easy", field:"Życie studenckie", pl:"Lubię uczyć się języka polskiego.", pron:"LOO-byeh OO-chich sheh YEN-zi-ka pol-SKYE-go", en:"I like learning Polish."},
+  {level:"easy", field:"Życie studenckie", pl:"Mieszkam w akademiku.", pron:"MYESH-kam v a-ka-DE-mee-koo", en:"I live in a dormitory."},
+  {level:"easy", field:"Marketing", pl:"Marketing to ciekawy kierunek.", pron:"MAR-ke-ting to chye-KA-vi KYE-roo-nek", en:"Marketing is an interesting field of study."},
+  {level:"easy", field:"Finanse i Rachunkowość", pl:"Chcę pracować w banku.", pron:"htseh pra-TSO-vach v BAN-koo", en:"I want to work in a bank."},
+
+  /* --- ŚREDNI: życie studenckie + kierunki --- */
+  {level:"medium", field:"Życie studenckie", pl:"Wykładowca wyjaśnił temat bardzo dokładnie.", pron:"vi-kwa-DOV-tsa vi-YASH-neew TE-mat BAR-dzo do-KWAD-nye", en:"The lecturer explained the topic very precisely."},
+  {level:"medium", field:"Życie studenckie", pl:"Studenci pracują nad projektem grupowym.", pron:"stoo-DEN-tsee pra-TSOO-yom nad pro-YEK-tem groo-PO-vim", en:"The students are working on a group project."},
+  {level:"medium", field:"Finanse i Rachunkowość", pl:"Bank oferuje kredyt na niski procent.", pron:"bank o-fe-ROO-ye KRE-dit na NEES-kee PRO-tsent", en:"The bank offers a loan at a low interest rate."},
+  {level:"medium", field:"Zarządzanie zasobami ludzkimi", pl:"Firma poszukuje specjalisty do działu sprzedaży.", pron:"FEER-ma po-shoo-KOO-ye spe-tsya-LEES-ti do JA-woo spshe-DA-zhi", en:"The company is looking for a specialist for the sales department."},
+  {level:"medium", field:"Logistyka", pl:"Magazyn musi być dobrze zorganizowany.", pron:"ma-GA-zin MOO-shee bich DOB-zhe zor-ga-nee-ZO-va-ni", en:"A warehouse must be well organised."},
+  {level:"medium", field:"Marketing", pl:"Reklama powinna być krótka i przekonująca.", pron:"re-KLA-ma po-VEEN-na bich KROOT-ka ee pshe-ko-noo-YON-tsa", en:"An advert should be short and convincing."},
+  {level:"medium", field:"Pedagogika", pl:"Nauczyciel powinien być cierpliwy i wyrozumiały.", pron:"na-oo-CHI-chel po-VEE-nyen bich cher-PLEE-vi ee vi-ro-zoo-MYA-wi", en:"A teacher should be patient and understanding."},
+  {level:"medium", field:"Informatyka", pl:"Aplikacja mobilna ułatwia codzienne zakupy.", pron:"a-plee-KA-tsya mo-BEEL-na oo-WAT-fya tso-JEN-ne za-KOO-pi", en:"A mobile app makes everyday shopping easier."},
+  {level:"medium", field:"Stosunki międzynarodowe", pl:"Negocjacje handlowe wymagają cierpliwości.", pron:"ne-go-TSYA-tsye han-DLO-ve vi-ma-GA-yom cher-plee-VOSH-chee", en:"Trade negotiations require patience."},
+
+  /* --- TRUDNY: kierunki --- */
+  {level:"hard", field:"Finanse i Rachunkowość", pl:"Analiza finansowa pozwala ocenić kondycję przedsiębiorstwa.", pron:"a-na-LEE-za fee-nan-SO-va po-ZVA-la o-TSE-neech kon-DI-tsyeh pshed-shem-BYOR-stfa", en:"Financial analysis allows one to assess a company's condition."},
+  {level:"hard", field:"Zarządzanie", pl:"Skuteczna komunikacja jest podstawą pracy zespołowej.", pron:"skoo-TECH-na ko-moo-nee-KA-tsya yest pod-STA-vom PRA-tsi zes-po-WO-vey", en:"Effective communication is the foundation of teamwork."},
+  {level:"hard", field:"Prawo w biznesie", pl:"Ochrona danych osobowych podlega rygorystycznym przepisom.", pron:"o-HRO-na DA-nih o-so-BO-vih pod-LE-ga ri-go-ris-TICH-nim pshe-PEE-som", en:"Personal data protection is subject to strict regulations."},
+  {level:"hard", field:"Logistyka", pl:"Globalizacja wpływa na łańcuchy dostaw na całym świecie.", pron:"glo-ba-lee-ZA-tsya VPWI-va na wan-TSOO-hi DOS-taf na TSA-wim SHFYE-chye", en:"Globalisation affects supply chains all over the world."},
+  {level:"hard", field:"Psychologia", pl:"Profilaktyka zdrowia psychicznego jest coraz ważniejsza.", pron:"pro-fee-LAK-ti-ka ZDRO-vya psi-HEECH-ne-go yest TSO-raz vazh-NYEY-sha", en:"Mental health prevention is becoming increasingly important."},
+  {level:"hard", field:"Stosunki międzynarodowe", pl:"Międzynarodowa współpraca sprzyja rozwojowi gospodarczemu.", pron:"myen-dzi-na-ro-DO-va fspoow-PRA-tsa SPSHI-ya roz-vo-YO-vee gos-po-dar-CHE-moo", en:"International cooperation fosters economic development."},
+
+  /* --- ŁAMAŃCE: dwa bonusowe 😈 --- */
+  {level:"tongue", field:"Łamańce", pl:"Wyrewolwerowany rewolwerowiec.", pron:"vi-re-vol-ve-RO-va-ni re-vol-ve-RO-vyets", en:"A revolver-armed gunman."},
+  {level:"tongue", field:"Łamańce", pl:"Czarna krowa w kropki bordo gryzła trawę kręcąc mordą.", pron:"CHAR-na KRO-va f KROP-kee BOR-do GRIZ-wa TRA-veh KREN-tsonts MOR-dom", en:"A black cow with bordeaux spots chewed grass, twisting its snout."},
+];
+
+/* ============================================================================
+   LOGIKA GRY
+   ============================================================================ */
+const LEVEL_LABEL = {easy:"Łatwy", medium:"Średni", hard:"Trudny", tongue:"Łamaniec 😈"};
+const $ = id => document.getElementById(id);
+
+const state = {
+  level: "easy",
+  field: "all",
+  list: [],
+  idx: 0,
+  lenient: true,
+  passed: 0,
+  attempts: 0,
+  streak: 0,
+  checked: false,
+};
+
+/* --- normalizacja tekstu do porównania --- */
+const DIA = {ą:"a",ć:"c",ę:"e",ł:"l",ń:"n",ó:"o",ś:"s",ź:"z",ż:"z"};
+function stripDiacritics(s){ return s.replace(/[ąćęłńóśźż]/g, m => DIA[m] || m); }
+function normWord(w, lenient){
+  let s = w.toLowerCase().replace(/[.,!?;:„""'’"«»()\-—–…]/g, "");
+  if (lenient) s = stripDiacritics(s);
+  return s.trim();
+}
+function tokenize(str){ return str.trim().split(/\s+/).filter(Boolean); }
+
+/* ----------------------------------------------------------------------------
+   LICZBY: rozpoznawanie mowy zapisuje wypowiedziane liczebniki jako CYFRY
+   (np. „dziewiątej” -> „9:00”, „czterysta czterdzieści cztery” -> „444”).
+   Poniżej zamieniamy cyfry w ODPOWIEDZI z powrotem na polskie słowa —
+   tylko na potrzeby porównania, treść w polu tekstowym pozostaje bez zmian.
+   ---------------------------------------------------------------------------- */
+const TIME_ORD = {0:"zerowej",1:"pierwszej",2:"drugiej",3:"trzeciej",4:"czwartej",
+  5:"piątej",6:"szóstej",7:"siódmej",8:"ósmej",9:"dziewiątej",10:"dziesiątej",
+  11:"jedenastej",12:"dwunastej",13:"trzynastej",14:"czternastej",15:"piętnastej",
+  16:"szesnastej",17:"siedemnastej",18:"osiemnastej",19:"dziewiętnastej",20:"dwudziestej",
+  21:"dwudziestej pierwszej",22:"dwudziestej drugiej",23:"dwudziestej trzeciej",24:"dwudziestej czwartej"};
+
+const ONES = ["zero","jeden","dwa","trzy","cztery","pięć","sześć","siedem","osiem","dziewięć","dziesięć",
+  "jedenaście","dwanaście","trzynaście","czternaście","piętnaście","szesnaście","siedemnaście","osiemnaście","dziewiętnaście"];
+const TENS = [,, "dwadzieścia","trzydzieści","czterdzieści","pięćdziesiąt","sześćdziesiąt","siedemdziesiąt","osiemdziesiąt","dziewięćdziesiąt"];
+const HUNDREDS = [,"sto","dwieście","trzysta","czterysta","pięćset","sześćset","siedemset","osiemset","dziewięćset"];
+
+function under1000(n){
+  const out = [];
+  const h = Math.floor(n/100), rest = n%100;
+  if (h) out.push(HUNDREDS[h]);
+  if (rest > 0 && rest < 20) out.push(ONES[rest]);
+  else if (rest >= 20){ out.push(TENS[Math.floor(rest/10)]); if (rest%10) out.push(ONES[rest%10]); }
+  return out;
+}
+function cardinalPl(n){
+  if (n === 0) return "zero";
+  if (n < 0 || n > 9999) return null;
+  const out = [];
+  const th = Math.floor(n/1000), rest = n%1000;
+  if (th){
+    if (th === 1) out.push("tysiąc");
+    else { out.push(...under1000(th)); const d = th%10, dd = th%100;
+      out.push((d>=2 && d<=4 && !(dd>=12 && dd<=14)) ? "tysiące" : "tysięcy"); }
+  }
+  if (rest) out.push(...under1000(rest));
+  return out.join(" ");
+}
+function expandNumbers(str){
+  let s = str;
+  // 1) godziny z dwukropkiem/kropką: „9:00”, „09.00” -> forma „o której” (dziewiątej)
+  s = s.replace(/\b(\d{1,2})[:.](\d{2})\b/g, (m,h) => TIME_ORD[+h] || h);
+  // 2) godzina po przyimku: „o 9”, „do 17” -> przyimek + ordinal
+  s = s.replace(/\b(o|od|do|na|po|przed|około)\s+(\d{1,2})\b/gi,
+        (m,prep,h) => TIME_ORD[+h] ? prep+" "+TIME_ORD[+h] : m);
+  // 3) pozostałe liczby -> liczebnik główny (444 -> czterysta czterdzieści cztery)
+  s = s.replace(/\b\d+\b/g, m => cardinalPl(+m) || m);
+  return s;
+}
+
+/* --- najdłuższy wspólny podciąg: które słowa CELU zostały trafione --- */
+function matchedTargetIndices(targetNorms, inputNorms){
+  const n = targetNorms.length, m = inputNorms.length;
+  const dp = Array.from({length:n+1}, () => new Array(m+1).fill(0));
+  for (let i=1;i<=n;i++) for (let j=1;j<=m;j++){
+    dp[i][j] = targetNorms[i-1] === inputNorms[j-1]
+      ? dp[i-1][j-1] + 1
+      : Math.max(dp[i-1][j], dp[i][j-1]);
+  }
+  const matched = new Set();
+  let i=n, j=m;
+  while (i>0 && j>0){
+    if (targetNorms[i-1] === inputNorms[j-1]){ matched.add(i-1); i--; j--; }
+    else if (dp[i-1][j] >= dp[i][j-1]) i--; else j--;
+  }
+  return matched;
+}
+
+/* --- budowanie listy wg filtrów --- */
+function buildList(){
+  state.list = TEXTS.filter(t =>
+    t.level === state.level &&
+    (state.field === "all" || t.field === state.field)
+  );
+  // jeśli wybrany temat nie istnieje na tym poziomie, wróć do "wszystkie"
+  if (state.list.length === 0 && state.field !== "all"){
+    state.field = "all";
+    $("field").value = "all";
+    state.list = TEXTS.filter(t => t.level === state.level);
+  }
+  state.idx = 0;
+}
+
+/* --- wypełnienie filtra tematów: tylko tematy dostępne na BIEŻĄCYM poziomie --- */
+function populateFields(){
+  const sel = $("field");
+  const prev = state.field;
+  const fields = [...new Set(TEXTS.filter(t => t.level === state.level).map(t => t.field))]
+                 .sort((a,b)=>a.localeCompare(b,"pl"));
+  sel.innerHTML = '<option value="all">Wszystkie tematy</option>';
+  fields.forEach(f => {
+    const o = document.createElement("option");
+    o.value = f; o.textContent = f; sel.appendChild(o);
+  });
+  // zachowaj wybór, jeśli nadal dostępny; w przeciwnym razie wróć do „wszystkie”
+  if (prev !== "all" && fields.includes(prev)){ sel.value = prev; }
+  else { sel.value = "all"; state.field = "all"; }
+}
+
+/* --- render aktualnego zadania --- */
+function render(){
+  const card = $("card");
+  if (state.list.length === 0){
+    $("target").textContent = "Brak tekstów dla tego wyboru.";
+    return;
+  }
+  const item = state.list[state.idx];
+  card.classList.toggle("tongue-mode", item.level === "tongue");
+
+  $("tagField").textContent = item.field;
+  $("tagLevel").textContent = LEVEL_LABEL[item.level];
+  $("counter").textContent = `Tekst ${state.idx+1} z ${state.list.length}`;
+
+  // render słów docelowych jako osobne elementy (do podświetlania)
+  const target = $("target");
+  target.innerHTML = "";
+  tokenize(item.pl).forEach((word, i) => {
+    const span = document.createElement("span");
+    span.className = "w";
+    span.dataset.i = i;
+    span.textContent = word;
+    target.appendChild(span);
+    target.appendChild(document.createTextNode(" "));
+  });
+
+  $("pron").textContent = item.pron;
+  $("trans").textContent = item.en;
+
+  // reset stanu odpowiedzi
+  resetSpeech();
+  $("input").value = "";
+  $("feedback").classList.remove("show");
+  state.checked = false;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  $("listenNote").textContent = "";
+  setNote("", false);
+}
+
+/* --- sprawdzenie odpowiedzi --- */
+function check(){
+  if (state.list.length === 0) return;
+  const item = state.list[state.idx];
+  const targetTokens = tokenize(item.pl);
+  const inputTokens  = tokenize(expandNumbers($("input").value));
+
+  // normy; tokeny "puste" (sama interpunkcja) są neutralne
+  const targetNorms = targetTokens.map(w => normWord(w, state.lenient));
+  const inputNorms  = inputTokens.map(w => normWord(w, state.lenient)).filter(Boolean);
+
+  const scoreableIdx = targetNorms.map((w,i)=>w?i:-1).filter(i=>i>=0);
+  const matched = matchedTargetIndices(targetNorms, inputNorms);
+
+  // podświetl słowa
+  document.querySelectorAll("#target .w").forEach(el => {
+    const i = +el.dataset.i;
+    el.classList.remove("good","miss");
+    if (!targetNorms[i]) return;            // neutralne (interpunkcja)
+    el.classList.add(matched.has(i) ? "good" : "miss");
+  });
+
+  const total = scoreableIdx.length || 1;
+  const hit = scoreableIdx.filter(i => matched.has(i)).length;
+  const pct = Math.round(hit / total * 100);
+  const passed = pct >= 80;
+
+  // licznik tylko raz na zadanie
+  if (!state.checked){
+    state.attempts++;
+    if (passed){ state.passed++; state.streak++; }
+    else state.streak = 0;
+    state.checked = true;
+  }
+
+  // miernik + komunikat
+  const meter = $("meter");
+  meter.style.setProperty("--p", pct);
+  $("meterTxt").textContent = pct + "%";
+
+  let title, sub;
+  if (pct === 100){ title = "Idealnie! 🎉"; sub = "Wszystkie słowa trafione. Brawo!"; }
+  else if (passed){ title = "Bardzo dobrze! 👏"; sub = `${hit} z ${total} słów. Spróbuj jeszcze raz dla 100%.`; }
+  else if (pct >= 50){ title = "Coraz lepiej 💪"; sub = `${hit} z ${total} słów. Czerwone słowa powtórz wyraźniej.`; }
+  else { title = "Próbuj dalej 🌱"; sub = `${hit} z ${total} słów. Włącz wymowę i mów wolniej.`; }
+
+  $("fbTitle").textContent = title;
+  $("fbSub").textContent = sub;
+  $("feedback").classList.add("show");
+
+  $("passed").textContent = state.passed;
+  $("attempts").textContent = state.attempts;
+  $("streak").textContent = state.streak;
+}
+
+function nextItem(){
+  if (state.list.length === 0) return;
+  state.idx = (state.idx + 1) % state.list.length;
+  render();
+  $("input").focus();
+}
+
+/* ============================================================================
+   DYKTOWANIE W PRZEGLĄDARCE (Web Speech API) — opcjonalne, z bezpiecznym fallbackiem
+   ============================================================================ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null, listening = false, micGranted = false, starting = false;
+let basePrefix = "", finalText = "";
+
+function setupMic(){
+  const micBtn = $("mic"), note = $("micNote"), input = $("input");
+  if (!SR){
+    // Brak dyktowania w przeglądarce (np. Firefox): nie blokujemy pola,
+    // żeby działało dyktowanie urządzenia. Inaczej student utknąłby.
+    micBtn.style.display = "none";
+    input.placeholder = "Włącz dyktowanie urządzenia (przycisk „Jak włączyć dyktowanie”) i mów…";
+    note.textContent = "Dyktowanie w przeglądarce niedostępne tutaj — użyj dyktowania urządzenia.";
+    return;
+  }
+  // Tryb głosowy: klawiatura wyłączona, kliknięcie pola = mikrofon (klik ponownie = stop).
+  input.readOnly = true;
+  input.classList.add("voice-only");
+  input.placeholder = "Kliknij tutaj i mów po polsku 🎤   (pisanie z klawiatury jest wyłączone)";
+  input.addEventListener("click", () => listening ? stopMic() : startMic());
+  micBtn.addEventListener("click", () => listening ? stopMic() : startMic());
+}
+
+// Jednorazowo „odblokuj” mikrofon, żeby przeglądarka nie pytała za każdym razem.
+// Działa na https:// oraz http://localhost. Przy otwarciu pliku przez file://
+// przeglądarka i tak pyta za każdym razem — to ograniczenie przeglądarki.
+async function ensureMicPermission(){
+  if (micGranted) return;
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    try{
+      const s = await navigator.mediaDevices.getUserMedia({audio:true});
+      s.getTracks().forEach(t => t.stop()); // zgoda zostaje, mikrofon zwalniamy
+      micGranted = true;
+    }catch(e){ /* odmowa — recognition pokaże komunikat */ }
+  }
+}
+
+// Jeden obiekt nasłuchu, tworzony raz i reużywany (to ogranicza pytania o zgodę).
+function getRecog(){
+  if (recog) return recog;
+  recog = new SR();
+  recog.lang = "pl-PL";
+  recog.interimResults = true;
+  recog.continuous = true; // jedna sesja = jedno pytanie o mikrofon
+  recog.onstart = () => { listening = true; $("mic").classList.add("live"); setNote("Słucham… mów po polsku. Kliknij 🎤, by zakończyć.", false); };
+  recog.onerror = (e) => {
+    if (e.error === "aborted") return; // celowe przerwanie (np. „Wyczyść”) — bez komunikatu
+    const map = {
+      "not-allowed":"Brak dostępu do mikrofonu. Użyj dyktowania urządzenia (przycisk u góry).",
+      "service-not-allowed":"Mikrofon zablokowany. Otwórz w Chrome/Edge lub użyj dyktowania urządzenia.",
+      "no-speech":"Nie usłyszałem mowy. Kliknij 🎤 i spróbuj jeszcze raz.",
+      "audio-capture":"Nie znaleziono mikrofonu."
+    };
+    setNote(map[e.error] || "Dyktowanie niedostępne — użyj dyktowania urządzenia.", true);
+  };
+  recog.onend = () => { listening = false; $("mic").classList.remove("live"); if(!$("micNote").classList.contains("warn")) setNote("", false); };
+  recog.onresult = (ev) => {
+    let interim = "";
+    for (let i = ev.resultIndex; i < ev.results.length; i++){
+      const r = ev.results[i];
+      if (r.isFinal) finalText += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    $("input").value = (basePrefix + finalText + interim).replace(/\s+/g," ").trimStart();
+  };
+  return recog;
+}
+
+async function startMic(){
+  if (!SR || listening || starting) return;
+  starting = true;
+  setNote("Przygotowuję mikrofon…", false);
+  await ensureMicPermission();
+  const r = getRecog();
+  basePrefix = $("input").value ? $("input").value.replace(/\s+$/,"") + " " : "";
+  finalText = "";
+  try{ r.start(); }
+  catch(e){ /* już działa lub chwilowy błąd — ignorujemy */ }
+  finally{ starting = false; }
+}
+
+function stopMic(){
+  if (recog && listening){ try{ recog.stop(); }catch(e){} }
+  listening = false;
+  const m = $("mic"); if (m) m.classList.remove("live");
+}
+
+// Pełny reset pamięci rozpoznawania: zeruje akumulatory i twardo przerywa sesję
+// (abort nie dostarcza już zaległych wyników), więc nic starego nie wraca.
+function resetSpeech(){
+  finalText = "";
+  basePrefix = "";
+  if (recog){ try{ recog.abort(); }catch(e){} }
+  listening = false;
+  const m = $("mic"); if (m) m.classList.remove("live");
+}
+
+// „Wyczyść”: czyści pole I pamięć mikrofonu, potem czeka na nowe dyktowanie.
+function clearInput(){
+  resetSpeech();
+  setNote("", false);
+  $("input").value = "";
+  $("input").focus();
+}
+function setNote(t, warn){ const n=$("micNote"); n.textContent=t; n.classList.toggle("warn",!!warn); }
+
+/* ============================================================================
+   TTS — „Posłuchaj, jak to brzmi” (Web Speech: speechSynthesis)
+   ============================================================================ */
+const synth = window.speechSynthesis;
+let plVoice = null;
+function pickVoice(){
+  if (!synth) return;
+  const vs = synth.getVoices();
+  plVoice = vs.find(v => v.lang === "pl-PL")
+         || vs.find(v => (v.lang||"").toLowerCase().startsWith("pl"))
+         || null;
+}
+if (synth){ pickVoice(); synth.addEventListener("voiceschanged", pickVoice); }
+
+function speak(rate){
+  if (!synth){ $("listenNote").textContent = "Ta przeglądarka nie czyta na głos."; return; }
+  if (state.list.length === 0) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(state.list[state.idx].pl);
+  u.lang = "pl-PL";
+  if (plVoice) u.voice = plVoice;
+  u.rate = rate;
+  $("listenNote").textContent = plVoice ? "" : "Brak polskiego głosu w systemie — wymowa może być przybliżona.";
+  synth.speak(u);
+}
+function setupTTS(){
+  if (!synth){
+    $("listen").style.display = "none"; $("listenSlow").style.display = "none";
+    $("listenNote").textContent = "Ta przeglądarka nie czyta na głos.";
+    return;
+  }
+  $("listen").addEventListener("click", () => speak(0.95));
+  $("listenSlow").addEventListener("click", () => speak(0.6));
+}
+
+/* ============================================================================
+   PODPIĘCIE ZDARZEŃ
+   ============================================================================ */
+function init(){
+  populateFields();
+  buildList();
+  render();
+  setupMic();
+  setupTTS();
+
+  // poziomy
+  $("levels").addEventListener("click", e => {
+    const b = e.target.closest("button[data-level]");
+    if (!b) return;
+    state.level = b.dataset.level;
+    document.querySelectorAll("#levels button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    populateFields();
+    buildList(); render();
+  });
+
+  // temat
+  $("field").addEventListener("change", e => {
+    state.field = e.target.value; buildList(); render();
+  });
+
+  // przyciski akcji
+  $("check").addEventListener("click", check);
+  $("clear").addEventListener("click", clearInput);
+  $("next").addEventListener("click", nextItem);
+  $("input").addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); check(); return; }
+    if ($("input").readOnly && (e.key === "Enter" || e.key === " ")){
+      e.preventDefault(); listening ? stopMic() : startMic();
+    }
+  });
+
+  // pobłażliwość
+  $("lenient").addEventListener("change", e => {
+    state.lenient = e.target.checked;
+    if (state.checked) check(); // przelicz na bieżąco
+  });
+
+  // toggling pomocy (wymowa / tłumaczenie)
+  $("togglePron").addEventListener("click", () => {
+    const v=$("pron"); const hidden=v.classList.toggle("hidden-aid");
+    $("togglePron").textContent = hidden ? "Pokaż wymowę" : "Ukryj wymowę";
+  });
+  $("toggleTrans").addEventListener("click", () => {
+    const v=$("trans"); const hidden=v.classList.toggle("hidden-aid");
+    $("toggleTrans").textContent = hidden ? "Pokaż tłumaczenie" : "Ukryj tłumaczenie";
+  });
+  // odsłoń po kliknięciu zamazanego
+  $("pron").addEventListener("click", ()=>{ if($("pron").classList.contains("hidden-aid")) $("togglePron").click(); });
+  $("trans").addEventListener("click", ()=>{ if($("trans").classList.contains("hidden-aid")) $("toggleTrans").click(); });
+
+  // modal instrukcji
+  const overlay=$("overlay");
+  const open=()=>overlay.classList.add("show");
+  const close=()=>overlay.classList.remove("show");
+  $("helpBtn").addEventListener("click", open);
+  $("closeModal").addEventListener("click", close);
+  overlay.addEventListener("click", e => { if(e.target===overlay) close(); });
+  document.addEventListener("keydown", e => { if(e.key==="Escape") close(); });
+
+  // zakładki w modalu
+  function tab(which){
+    const pc = which==="pc";
+    $("tabPc").setAttribute("aria-selected", String(pc));
+    $("tabPhone").setAttribute("aria-selected", String(!pc));
+    $("panelPc").classList.toggle("show", pc);
+    $("panelPhone").classList.toggle("show", !pc);
+  }
+  $("tabPc").addEventListener("click", ()=>tab("pc"));
+  $("tabPhone").addEventListener("click", ()=>tab("phone"));
+}
+
+init();
+</script>
+</body>
+</html>
